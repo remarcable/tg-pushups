@@ -1,0 +1,14 @@
+{
+  "name": "@pushups-bot/telegram-bot",
+  "version": "1.0.0",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "tsx --watch src/index.ts"
+  },
+  "dependencies": {
+    "@pushups-bot/core": "1.0.0"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

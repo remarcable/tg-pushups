@@ -1,0 +1,24 @@
+{
+  "name": "pushups-bot",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A Telegram bot to track pushups",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^24.6.2",
+    "eslint": "^9.36.0",
+    "prettier": "^3.6.2",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
+  }
+}
