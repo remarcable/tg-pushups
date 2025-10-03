@@ -13,43 +13,32 @@ export const updateGroupSettings = async (
         missedDayPenalty?: number;
     }
 ) => {
-    const group = await prisma.group.update({
-        where: { id: groupId },
-        data: settings,
-    });
-
-    await prisma.settingChange.create({
+    await prisma.groupSettingChange.create({
         data: {
             groupId,
             timestamp: new Date(),
             payload: JSON.stringify(settings),
         },
     });
-
-    return group;
 };
 
 export const getEffectiveSettings = async (groupId: string, atTimestamp?: Date) => {
-    const group = await prisma.group.findUnique({ where: { id: groupId } });
-    if (!group) {
-        throw new Error("Group not found");
-    }
+    // Default settings
+    let effectiveSettings = {
+        groupId: groupId, // Keep groupId for consistency with the interface
+        timezone: "UTC", // Default timezone
+        monthGoal: 2000, // Default month goal
+        dailyTarget: 50, // Default daily target
+        missedDayPenalty: -10, // Default missed day penalty
+    };
 
-    const changes = await prisma.settingChange.findMany({
+    const changes = await prisma.groupSettingChange.findMany({
         where: {
             groupId,
             timestamp: { lte: atTimestamp || new Date() },
         },
         orderBy: { timestamp: "asc" },
     });
-
-    let effectiveSettings = {
-        groupId: group.id,
-        timezone: group.timezone,
-        monthGoal: group.monthGoal,
-        dailyTarget: group.dailyTarget,
-        missedDayPenalty: group.missedDayPenalty,
-    };
 
     for (const change of changes) {
         effectiveSettings = { ...effectiveSettings, ...JSON.parse(change.payload) };

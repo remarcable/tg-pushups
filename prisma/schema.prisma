@@ -14,15 +14,11 @@ datasource db {
 model Group {
   id        String   @id
   title     String
-  timezone  String
-  monthGoal Int
-  dailyTarget Int
-  missedDayPenalty Int
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   members   Member[]
   actions   Action[]
-  settingChanges SettingChange[]
+  settingChanges GroupSettingChange[]
 }
 
 model Member {
@@ -47,7 +43,7 @@ model Action {
   member    Member   @relation(fields: [memberId], references: [id])
 }
 
-model SettingChange {
+model GroupSettingChange {
   id        String   @id @default(uuid())
   groupId   String
   timestamp DateTime
