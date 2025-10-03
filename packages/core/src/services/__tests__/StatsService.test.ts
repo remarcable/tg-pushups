@@ -374,7 +374,11 @@ describe("StatsService pure functions", () => {
     describe("_generateMonthlyTotals", () => {
         it("should return empty totals for empty actionsWithPenalties", () => {
             const actionsWithPenalties: (Action | VirtualPenalty)[] = [];
-            const result = _generateMonthlyTotals({ actionsWithPenalties });
+            const result = _generateMonthlyTotals({
+                actionsWithPenalties,
+                settings: mockSettings,
+                dayCount: 0,
+            });
             expect(result).toEqual({});
         });
 
@@ -386,11 +390,27 @@ describe("StatsService pure functions", () => {
                 mockAction4,
                 mockAction5,
             ];
-            const result = _generateMonthlyTotals({ actionsWithPenalties });
+            const result = _generateMonthlyTotals({
+                actionsWithPenalties,
+                settings: mockSettings,
+                dayCount: 2,
+            });
 
             expect(result).toEqual({
-                member1: { pushups: 190, penalties: 0, net: 190 }, // 60 + 50 + 80
-                member2: { pushups: 190, penalties: 0, net: 190 }, // 120 + 70
+                member1: {
+                    pushups: 190, // 60 + 50 + 80
+                    penalties: 0,
+                    net: 190,
+                    missedDays: 0,
+                    monthlyTarget: 200,
+                },
+                member2: {
+                    pushups: 190, // 120 + 70
+                    penalties: 0,
+                    net: 190,
+                    missedDays: 0,
+                    monthlyTarget: 200,
+                },
             });
         });
 
@@ -416,11 +436,27 @@ describe("StatsService pure functions", () => {
                 virtualPenalty1, // member1 penalty
                 virtualPenalty2, // member2 penalty
             ];
-            const result = _generateMonthlyTotals({ actionsWithPenalties });
+            const result = _generateMonthlyTotals({
+                actionsWithPenalties,
+                settings: mockSettings,
+                dayCount: 1,
+            });
 
             expect(result).toEqual({
-                member1: { pushups: 60, penalties: -50, net: 10 },
-                member2: { pushups: 120, penalties: -50, net: 70 },
+                member1: {
+                    pushups: 60,
+                    penalties: -50,
+                    net: 10,
+                    missedDays: 1,
+                    monthlyTarget: 100,
+                },
+                member2: {
+                    pushups: 120,
+                    penalties: -50,
+                    net: 70,
+                    missedDays: 1,
+                    monthlyTarget: 100,
+                },
             });
         });
     });

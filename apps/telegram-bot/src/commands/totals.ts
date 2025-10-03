@@ -3,7 +3,15 @@ import { CommandGroup } from "@grammyjs/commands";
 import { getMonthlyTotals } from "@pushups-bot/core";
 import { ChatMember } from "grammy/types";
 
-type Totals = { [key: string]: { pushups: number; penalties: number; net: number } };
+type Totals = {
+    [key: string]: {
+        pushups: number;
+        penalties: number;
+        net: number;
+        missedDays: number;
+        monthlyTarget: number;
+    };
+};
 type GetChatMember = (chatId: number, memberId: number) => Promise<ChatMember>;
 
 export const generateTotalsReply = async (
@@ -16,7 +24,13 @@ export const generateTotalsReply = async (
     for (const memberId in totals) {
         const member = await getChatMember(chatId, parseInt(memberId));
         const total = totals[memberId];
-        reply += `${member.user.first_name}: ${total.pushups} pushups, ${total.penalties} penalties, ${total.net} net\n`;
+
+        let penaltyPart = "no penalties";
+        if (total.penalties < 0) {
+            penaltyPart = `${total.penalties} penalties (missed ${total.missedDays} days)`;
+        }
+
+        reply += `${member.user.first_name}: ${total.pushups} pushups, ${penaltyPart} = ${total.net} net of ${total.monthlyTarget} pushups\n`;
     }
 
     return reply;

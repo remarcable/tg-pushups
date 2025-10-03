@@ -70,9 +70,15 @@ export const _calculateVirtualPenalties = ({
     endDate: Date;
 }): (Action | VirtualPenalty)[] => {
     const virtualPenalties: VirtualPenalty[] = [];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
     for (const member of members) {
         for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+            if (d >= today) {
+                continue;
+            }
+
             const localDate = getLocalDate(d, settings.timezone);
             const actionsOnDate = actions.filter(
                 (a) =>
@@ -201,18 +207,38 @@ export const getMemberDailySummaries = async ({
 
 export const _generateMonthlyTotals = ({
     actionsWithPenalties,
+    settings,
+    dayCount,
 }: {
     actionsWithPenalties: (Action | VirtualPenalty)[];
+    settings: EffectiveSettings;
+    dayCount: number;
 }) => {
-    const totals: { [key: string]: { pushups: number; penalties: number; net: number } } = {};
+    const totals: {
+        [key: string]: {
+            pushups: number;
+            penalties: number;
+            net: number;
+            missedDays: number;
+            monthlyTarget: number;
+        };
+    } = {};
+    const monthlyTarget = settings.dailyTarget * dayCount;
 
     for (const item of actionsWithPenalties) {
         if (!totals[item.memberId]) {
-            totals[item.memberId] = { pushups: 0, penalties: 0, net: 0 };
+            totals[item.memberId] = {
+                pushups: 0,
+                penalties: 0,
+                net: 0,
+                missedDays: 0,
+                monthlyTarget: monthlyTarget,
+            };
         }
 
         if ("reason" in item && item.reason === "missed_daily_target") {
             totals[item.memberId].penalties += item.amount;
+            totals[item.memberId].missedDays++;
         } else {
             totals[item.memberId].pushups += item.amount;
         }
@@ -224,7 +250,9 @@ export const _generateMonthlyTotals = ({
 
 export const getMonthlyTotals = async ({ groupId, month }: { groupId: string; month: Date }) => {
     const startDate = new Date(month.getFullYear(), month.getMonth(), 1);
-    const endDate = new Date(month.getFullYear(), month.getMonth() + 1, 0);
+    const today = new Date();
+    const monthEndDate = new Date(month.getFullYear(), month.getMonth() + 1, 0);
+    const endDate = today < monthEndDate ? today : monthEndDate;
 
     const actionsWithPenalties: (Action | VirtualPenalty)[] = await getActionsWithVirtualPenalties({
         groupId,
@@ -232,5 +260,16 @@ export const getMonthlyTotals = async ({ groupId, month }: { groupId: string; mo
         endDate,
     });
 
-    return _generateMonthlyTotals({ actionsWithPenalties });
+    const settings = await getEffectiveSettings(groupId, endDate);
+
+    let dayCount = 0;
+    for (let d = new Date(startDate); d < today && d < monthEndDate; d.setDate(d.getDate() + 1)) {
+        dayCount++;
+    }
+
+    return _generateMonthlyTotals({
+        actionsWithPenalties,
+        settings,
+        dayCount,
+    });
 };
