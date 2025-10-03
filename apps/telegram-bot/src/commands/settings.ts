@@ -1,6 +1,23 @@
 import { CommandGroup } from "@grammyjs/commands";
 import { Context } from "grammy";
-import { getEffectiveSettings, updateGroupSettings } from "@pushups-bot/core";
+import { getEffectiveSettings, updateGroupSettings, EffectiveSettings } from "@pushups-bot/core";
+
+export const parseSettingsCommand = (
+    match: string
+): { setting: string | null; value: number | null } => {
+    const parts = match.split(" ");
+    const setting = parts[0] || null;
+    const value = parseInt(parts[1], 10);
+    return { setting, value: isNaN(value) ? null : value };
+};
+
+export const generateSettingsUpdatedMessage = (setting: string, value: number): string => {
+    return `${setting} updated to ${value}.`;
+};
+
+export const generateCurrentSettingsMessage = (settings: EffectiveSettings): string => {
+    return `Current settings:\n- dailyTarget: ${settings.dailyTarget}\nTo update, use: /settings dailyTarget <value>`;
+};
 
 export const registerSettingsCommand = (myCommands: CommandGroup<Context>) => {
     myCommands.command("settings", "Configure group settings", async (ctx: Context) => {
@@ -16,18 +33,16 @@ export const registerSettingsCommand = (myCommands: CommandGroup<Context>) => {
             return ctx.reply("Only admins can change settings.");
         }
 
-        const match = (typeof ctx.match === "string" ? ctx.match : "").split(" ");
-        const setting = match[0];
-        const value = parseInt(match[1], 10);
+        const { setting, value } = parseSettingsCommand(
+            typeof ctx.match === "string" ? ctx.match : ""
+        );
 
-        if (setting === "dailyTarget" && !isNaN(value) && value > 0) {
+        if (setting === "dailyTarget" && value !== null && value > 0) {
             await updateGroupSettings(chat.id.toString(), { dailyTarget: value });
-            return ctx.reply(`Daily target updated to ${value}.`);
+            return ctx.reply(generateSettingsUpdatedMessage("Daily target", value));
         } else {
             const settings = await getEffectiveSettings(chat.id.toString());
-            return ctx.reply(
-                `Current settings:\n- dailyTarget: ${settings.dailyTarget}\nTo update, use: /settings dailyTarget <value>`
-            );
+            return ctx.reply(generateCurrentSettingsMessage(settings));
         }
     });
 };

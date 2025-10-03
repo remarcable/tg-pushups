@@ -7,6 +7,7 @@ import {
     getEffectiveSettings,
     getMemberDailySummaries,
     getLocalDate,
+    getDayWindow,
 } from "@pushups-bot/core";
 
 export const registerAddCommand = (myCommands: CommandGroup<Context>) => {
@@ -30,35 +31,48 @@ export const registerAddCommand = (myCommands: CommandGroup<Context>) => {
         await ensureGroup(chat.id.toString(), chat.title);
         await ensureMember(chat.id.toString(), from.id.toString(), from.username, from.first_name);
 
-        await recordAction(chat.id.toString(), from.id.toString(), amount, new Date());
+        const actionTimestamp = new Date();
+        await recordAction(chat.id.toString(), from.id.toString(), amount, actionTimestamp);
 
         const settings = await getEffectiveSettings(chat.id.toString());
 
-        const startDate = new Date();
-        startDate.setDate(startDate.getDate() - 1); // 24 hours ago
-        const endDate = new Date();
-        endDate.setDate(endDate.getDate() + 1); // 24 hours in future
+        const { startDate, endDate } = getDayWindow(actionTimestamp, settings.timezone);
 
         const dailySummaries = await getMemberDailySummaries({
             groupId: chat.id.toString(),
-            startDate: startDate,
-            endDate: endDate,
+            startDate,
+            endDate,
         });
 
         const localToday = getLocalDate(new Date(), settings.timezone);
-        const userSummary =
-            dailySummaries[from.id.toString()]?.[localToday.toDateString()];
+        const userSummary = dailySummaries[from.id.toString()]?.[localToday.toDateString()];
         const dailyTotal = userSummary?.pushups || 0;
 
-        const remaining = settings.dailyTarget - dailyTotal;
-
-        let reply = `Added ${amount} pushups. Your total for today is ${dailyTotal}.`;
-        if (remaining > 0) {
-            reply += ` You have ${remaining} to go to reach your daily target.`;
-        } else {
-            reply += ` You have reached your daily target!`;
-        }
+        const reply = generateReplyText({
+            amount,
+            dailyTotal,
+            dailyTarget: settings.dailyTarget,
+        });
 
         return ctx.reply(reply);
     });
+};
+
+export const generateReplyText = ({
+    amount,
+    dailyTotal,
+    dailyTarget,
+}: {
+    amount: number;
+    dailyTotal: number;
+    dailyTarget: number;
+}): string => {
+    const remaining = dailyTarget - dailyTotal;
+    let reply = `Added ${amount} pushups. Your total for today is ${dailyTotal}.`;
+    if (remaining > 0) {
+        reply += ` You have ${remaining} to go to reach your daily target.`;
+    } else {
+        reply += ` You have reached your daily target!`;
+    }
+    return reply;
 };

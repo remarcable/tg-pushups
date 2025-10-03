@@ -18,6 +18,44 @@ export const getLocalDate = (date: Date, timezone: string) => {
     return new Date(utcDate.getTime() + offset);
 };
 
+export const getDayWindow = (date: Date, timezone: string) => {
+    const getOffset = (tz: string) => {
+        const roundedTime = Math.floor(date.getTime() / 1000) * 1000;
+        const utcDate = new Date(roundedTime);
+        return (
+            new Date(utcDate.toLocaleString("en-US", { timeZone: tz })).getTime() -
+            utcDate.getTime()
+        );
+    };
+
+    const offset = getOffset(timezone);
+    const localDate = new Date(date.getTime() + offset);
+
+    const startOfDayLocal = new Date(
+        localDate.getFullYear(),
+        localDate.getMonth(),
+        localDate.getDate(),
+        0,
+        0,
+        0,
+        0
+    );
+    const endOfDayLocal = new Date(
+        localDate.getFullYear(),
+        localDate.getMonth(),
+        localDate.getDate(),
+        23,
+        59,
+        59,
+        999
+    );
+
+    const startDate = new Date(startOfDayLocal.getTime() - offset);
+    const endDate = new Date(endOfDayLocal.getTime() - offset);
+
+    return { startDate, endDate };
+};
+
 export const _calculateVirtualPenalties = ({
     actions,
     members,

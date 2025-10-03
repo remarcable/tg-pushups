@@ -3,6 +3,7 @@ import {
     _generateMemberDailySummaries,
     _generateMonthlyTotals,
     getLocalDate,
+    getDayWindow,
     EffectiveSettings,
 } from "../StatsService";
 import { VirtualPenalty } from "../../types/types";
@@ -79,6 +80,48 @@ describe("StatsService pure functions", () => {
         amount: 70,
         createdAt: new Date(),
     };
+
+    describe("getDayWindow", () => {
+        it("should return the correct day window for a UTC date", () => {
+            const date = new Date("2025-10-04T10:00:00.000Z");
+            const timezone = "UTC";
+            const { startDate, endDate } = getDayWindow(date, timezone);
+            expect(startDate).toEqual(new Date("2025-10-04T00:00:00.000Z"));
+            expect(endDate).toEqual(new Date("2025-10-04T23:59:59.999Z"));
+        });
+
+        it("should return the correct day window for a timezone behind UTC", () => {
+            const date = new Date("2025-10-04T02:00:00.000Z"); // This is 22:00 on Oct 3 in NY
+            const timezone = "America/New_York"; // UTC-4
+            const { startDate, endDate } = getDayWindow(date, timezone);
+            expect(startDate).toEqual(new Date("2025-10-03T04:00:00.000Z"));
+            expect(endDate).toEqual(new Date("2025-10-04T03:59:59.999Z"));
+        });
+
+        it("should return the correct day window for a timezone ahead of UTC", () => {
+            const date = new Date("2025-10-03T22:00:00.000Z"); // This is 07:00 on Oct 4 in Tokyo
+            const timezone = "Asia/Tokyo"; // UTC+9
+            const { startDate, endDate } = getDayWindow(date, timezone);
+            expect(startDate).toEqual(new Date("2025-10-03T15:00:00.000Z"));
+            expect(endDate).toEqual(new Date("2025-10-04T14:59:59.999Z"));
+        });
+
+        it("should handle the beginning of a day correctly", () => {
+            const date = new Date("2025-10-04T04:00:00.000Z"); // 00:00 in NY
+            const timezone = "America/New_York";
+            const { startDate, endDate } = getDayWindow(date, timezone);
+            expect(startDate).toEqual(new Date("2025-10-04T04:00:00.000Z"));
+            expect(endDate).toEqual(new Date("2025-10-05T03:59:59.999Z"));
+        });
+
+        it("should handle the end of a day correctly", () => {
+            const date = new Date("2025-10-04T03:59:59.999Z"); // 23:59:59 on Oct 3 in NY
+            const timezone = "America/New_York";
+            const { startDate, endDate } = getDayWindow(date, timezone);
+            expect(startDate).toEqual(new Date("2025-10-03T04:00:00.000Z"));
+            expect(endDate).toEqual(new Date("2025-10-04T03:59:59.999Z"));
+        });
+    });
 
     describe("_calculateVirtualPenalties", () => {
         it("should return an ordered list of actions and no virtual penalties if no missed daily targets", () => {
