@@ -1,0 +1,56 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Group {
+  id        String   @id
+  title     String
+  timezone  String
+  monthGoal Int
+  dailyTarget Int
+  missedDayPenalty Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  members   Member[]
+  actions   Action[]
+  settingChanges SettingChange[]
+}
+
+model Member {
+  id          String   @id
+  groupId     String
+  username    String?
+  displayName String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  group       Group    @relation(fields: [groupId], references: [id])
+  actions     Action[]
+}
+
+model Action {
+  id        String   @id @default(uuid())
+  groupId   String
+  memberId  String
+  timestamp DateTime
+  amount    Int
+  createdAt DateTime @default(now())
+  group     Group    @relation(fields: [groupId], references: [id])
+  member    Member   @relation(fields: [memberId], references: [id])
+}
+
+model SettingChange {
+  id        String   @id @default(uuid())
+  groupId   String
+  timestamp DateTime
+  payload   String // JSON string
+  createdAt DateTime @default(now())
+  group     Group    @relation(fields: [groupId], references: [id])
+}

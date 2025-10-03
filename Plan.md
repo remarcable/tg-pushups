@@ -33,34 +33,33 @@ Optional (MVP+):
 Entities:
 
 - Group
-  - id (string; TG chat id)
-  - title (string)
-  - timezone (string, IANA)
-  - monthGoal (int) // default: dailyTarget \* numberOfMembers; admin can override
-  - dailyTarget (int)
-  - missedDayPenalty (int)
-  - createdAt, updatedAt (datetime)
+    - id (string; TG chat id)
+    - title (string)
+    - timezone (string, IANA)
+    - monthGoal (int) // default: dailyTarget \* numberOfMembers; admin can override
+    - dailyTarget (int)
+    - missedDayPenalty (int)
+    - createdAt, updatedAt (datetime)
 - Member
-  - id (string; TG user id)
-  - groupId (fk)
-  - username (string | null)
-  - displayName (string)
-  - createdAt, updatedAt
+    - id (string; TG user id)
+    - groupId (fk)
+    - username (string | null)
+    - displayName (string)
+    - createdAt, updatedAt
 - Action
-
-  - id (uuid)
-  - groupId (fk)
-  - memberId (fk)
-  - timestamp (datetime/number; UTC) // source of truth time
-  - amount (int; positive for add, negative for sub)
-  - createdAt
+    - id (uuid)
+    - groupId (fk)
+    - memberId (fk)
+    - timestamp (datetime/number; UTC) // source of truth time
+    - amount (int; positive for add, negative for sub)
+    - createdAt
 
 - SettingChange (audit log of settings changes)
-  - id (uuid)
-  - groupId (fk)
-  - timestamp (datetime/number; UTC) // when change was made
-  - payload (json) // full updated settings: { dailyTarget?, missedDayPenalty?, monthGoal?, timezone? }
-  - createdAt
+    - id (uuid)
+    - groupId (fk)
+    - timestamp (datetime/number; UTC) // when change was made
+    - payload (json) // full updated settings: { dailyTarget?, missedDayPenalty?, monthGoal?, timezone? }
+    - createdAt
 
 Notes:
 
@@ -73,8 +72,8 @@ Notes:
 ### Penalty Calculation as Virtual Events
 
 - For any date range, build a stream per member consisting of:
-  - All `Action` records ordered by date then createdAt
-  - Insert a virtual penalty event for each date where daily sum < `dailyTarget`, amount = `missedDayPenalty`, reason = "missed_daily_target"
+    - All `Action` records ordered by date then createdAt
+    - Insert a virtual penalty event for each date where daily sum < `dailyTarget`, amount = `missedDayPenalty`, reason = "missed_daily_target"
 - This virtualized stream is input to aggregation functions, enabling backfill to automatically remove a previously implied penalty if the daily sum reaches the target.
 
 Core functions (in `StatsService`):
@@ -88,16 +87,16 @@ Core functions (in `StatsService`):
 Structure:
 
 - `packages/core` (pure TS, no Telegram code)
-  - `services/GroupsService`
-  - `services/MembersService`
-  - `services/ActionsService`
-  - `services/StatsService` (totals, penalties calc)
-  - `services/SettingsService` (apply changes, resolve effective settings)
-  - `services/SchedulerService` (identify who’s missing today)
-  - `db` (Prisma client, repository functions)
-  - `types`
+    - `services/GroupsService`
+    - `services/MembersService`
+    - `services/ActionsService`
+    - `services/StatsService` (totals, penalties calc)
+    - `services/SettingsService` (apply changes, resolve effective settings)
+    - `services/SchedulerService` (identify who’s missing today)
+    - `db` (Prisma client, repository functions)
+    - `types`
 - `apps/telegram-bot` (Telegraf or grammY)
-  - command handlers map to core services
+    - command handlers map to core services
 - `apps/worker` (later) for scheduled jobs (cron) and reminders
 
 API surface (examples; synchronous calls from bot):
@@ -139,7 +138,7 @@ Smart nudges (future):
 - `/sub 10`: Records -10 for today; clip so that today’s total cannot go below 0 and inform the user.
 - `/totals`: Shows today’s per-user status; MTD per-member metrics with three numbers: pushups, penalties, and net (pushups + penalties); group month total vs monthGoal.
 - `/settings`: Shows current settings and offers inline buttons to adjust key numbers; full command-arguments also supported (e.g., `/settings daily 50`).
-  - When admins change settings, we update `Group` (current snapshot) and append a `SettingChange` with the diff for audit/history.
+    - When admins change settings, we update `Group` (current snapshot) and append a `SettingChange` with the diff for audit/history.
 
 ### Validation & Edge Cases
 
@@ -154,9 +153,9 @@ Smart nudges (future):
 
 - MVP assumes all members share the group’s timezone (set by an admin in `/settings`).
 - If members differ in timezones (future consideration):
-  - Option A: Keep a single group timezone for fairness and simplicity; communicate this clearly.
-  - Option B: Track per-user timezones and evaluate daily targets per user’s local day, but aggregate penalties to the group month; this adds complexity to reminders and daily windows.
-  - Recommendation: Stick to a single group timezone for now.
+    - Option A: Keep a single group timezone for fairness and simplicity; communicate this clearly.
+    - Option B: Track per-user timezones and evaluate daily targets per user’s local day, but aggregate penalties to the group month; this adds complexity to reminders and daily windows.
+    - Recommendation: Stick to a single group timezone for now.
 - Implementation detail: always store `timestamp` in UTC; derive `localDate` via IANA TZ when aggregating at read time only (no materialization).
 
 ### Tech Choices
@@ -185,24 +184,24 @@ Smart nudges (future):
 Group-level monthly outcomes (future rules):
 
 - If the group misses the monthly goal but some individuals met their personal daily targets:
-  - Option A: Apply an additional group penalty shared equally across all members (e.g., -X each) regardless of individual performance to reinforce collective responsibility.
-  - Option B: Apply a smaller group penalty to everyone, and a reduced or zero extra penalty to members who met their own targets.
-  - Option C: No extra penalty; instead roll over a deficit to next month’s group goal.
+    - Option A: Apply an additional group penalty shared equally across all members (e.g., -X each) regardless of individual performance to reinforce collective responsibility.
+    - Option B: Apply a smaller group penalty to everyone, and a reduced or zero extra penalty to members who met their own targets.
+    - Option C: No extra penalty; instead roll over a deficit to next month’s group goal.
 - Recommendation: Start with Option C (no extra penalty) for clarity; revisit after seeing behavior.
 
 Win-back staking rule (future):
 
 - If a member misses their monthly target, they can “win back” next month by staking again and then meeting both:
-  - Their personal daily target compliance for the next month, and
-  - The group reaching its monthly goal for the next month.
+    - Their personal daily target compliance for the next month, and
+    - The group reaching its monthly goal for the next month.
 - Implementation later: track member’s prior-month status and evaluate win-back condition at month end.
 
 Cheap LLM for more fun messages (future):
 
 - Use a tiny/cheap model (e.g., `gpt-4o-mini` or similar low-cost) with short prompts and templated context:
-  - Keep a local library of message templates and pass only minimal variables (name, short status).
-  - Cache a few witty variants per situation and sample from them to reduce API calls.
-  - Fallback to static templates on outages or rate limits.
+    - Keep a local library of message templates and pass only minimal variables (name, short status).
+    - Cache a few witty variants per situation and sample from them to reduce API calls.
+    - Fallback to static templates on outages or rate limits.
 
 ### Open Questions (to confirm before implementation)
 
@@ -229,3 +228,7 @@ Cheap LLM for more fun messages (future):
 - 2h: telegram command handlers + minimal replies
 - 1h: reminder job + basic scheduler
 - Buffer: 1h polish
+
+## Testing
+
+The project should include comprehensive unit tests during every stage.

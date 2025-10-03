@@ -1,14 +1,17 @@
 {
-  "name": "@pushups-bot/telegram-bot",
-  "version": "1.0.0",
-  "main": "src/index.ts",
-  "scripts": {
-    "dev": "tsx --watch src/index.ts"
-  },
-  "dependencies": {
-    "@pushups-bot/core": "1.0.0"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC"
+    "name": "@pushups-bot/telegram-bot",
+    "version": "1.0.0",
+    "main": "src/index.ts",
+    "scripts": {
+        "dev": "tsx --watch src/index.ts"
+    },
+    "dependencies": {
+        "@grammyjs/commands": "^1.2.0",
+        "@pushups-bot/core": "1.0.0",
+        "dotenv": "^16.6.1",
+        "grammy": "^1.38.2"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC"
 }
