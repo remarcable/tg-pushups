@@ -15,9 +15,6 @@
         "packages/*",
         "apps/*"
     ],
-    "keywords": [],
-    "author": "",
-    "license": "ISC",
     "devDependencies": {
         "@types/jest": "^30.0.0",
         "@types/node": "^24.6.2",
