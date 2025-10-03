@@ -1,6 +1,14 @@
 import { VirtualPenalty } from "../types/types";
 import { getEffectiveSettings } from "./SettingsService";
 import { prisma } from "../db";
+import { Action, Member } from "@prisma/client";
+
+export interface EffectiveSettings {
+    groupId: string;
+    timezone: string;
+    dailyTarget: number;
+    missedDayPenalty: number;
+}
 
 export const getLocalDate = (date: Date, timezone: string) => {
     const utcDate = new Date(date.valueOf());
@@ -10,28 +18,19 @@ export const getLocalDate = (date: Date, timezone: string) => {
     return new Date(utcDate.getTime() + offset);
 };
 
-export const getActionsWithVirtualPenalties = async ({
-    groupId,
+export const _calculateVirtualPenalties = ({
+    actions,
+    members,
+    settings,
     startDate,
     endDate,
 }: {
-    groupId: string;
+    actions: Action[];
+    members: Member[];
+    settings: EffectiveSettings;
     startDate: Date;
     endDate: Date;
-}) => {
-    const settings = await getEffectiveSettings(groupId, endDate);
-    const actions = await prisma.action.findMany({
-        where: {
-            groupId,
-            timestamp: {
-                gte: startDate,
-                lte: endDate,
-            },
-        },
-        orderBy: { timestamp: "asc" },
-    });
-
-    const members = await prisma.member.findMany({ where: { groupId } });
+}): (Action | VirtualPenalty)[] => {
     const virtualPenalties: VirtualPenalty[] = [];
 
     for (const member of members) {
@@ -48,7 +47,7 @@ export const getActionsWithVirtualPenalties = async ({
 
             if (dailyTotal < settings.dailyTarget) {
                 virtualPenalties.push({
-                    groupId,
+                    groupId: settings.groupId,
                     memberId: member.id,
                     timestamp: new Date(
                         localDate.getFullYear(),
@@ -65,13 +64,12 @@ export const getActionsWithVirtualPenalties = async ({
             }
         }
     }
-
     return [...actions, ...virtualPenalties].sort(
         (a, b) => a.timestamp.getTime() - b.timestamp.getTime()
     );
 };
 
-export const getMemberDailySummaries = async ({
+export const getActionsWithVirtualPenalties = async ({
     groupId,
     startDate,
     endDate,
@@ -79,24 +77,52 @@ export const getMemberDailySummaries = async ({
     groupId: string;
     startDate: Date;
     endDate: Date;
-}) => {
-    const actionsWithPenalties = await getActionsWithVirtualPenalties({
-        groupId,
+}): Promise<(Action | VirtualPenalty)[]> => {
+    const settings: EffectiveSettings = await getEffectiveSettings(groupId, endDate);
+    const actions = await prisma.action.findMany({
+        where: {
+            groupId,
+            timestamp: {
+                gte: startDate,
+                lte: endDate,
+            },
+        },
+        orderBy: { timestamp: "asc" },
+    });
+
+    const members = await prisma.member.findMany({ where: { groupId } });
+
+    return _calculateVirtualPenalties({
+        actions,
+        members,
+        settings,
         startDate,
         endDate,
     });
+};
 
+export const _generateMemberDailySummaries = async ({
+    actionsWithPenalties,
+    getSettingsForTimestamp,
+}: {
+    actionsWithPenalties: (Action | VirtualPenalty)[];
+    getSettingsForTimestamp: (timestamp: Date) => Promise<EffectiveSettings>;
+}) => {
     const summaries: {
         [key: string]: { [key: string]: { pushups: number; penalty: number; net: number } };
     } = {};
 
     for (const item of actionsWithPenalties) {
-        const settings = await getEffectiveSettings(groupId, item.timestamp);
+        const settings = await getSettingsForTimestamp(item.timestamp);
         const localDate = getLocalDate(item.timestamp, settings.timezone).toDateString();
 
         if (!summaries[item.memberId]) {
             summaries[item.memberId] = {};
         }
+        if (!summaries[item.memberId][localDate]) {
+            summaries[item.memberId][localDate] = { pushups: 0, penalty: 0, net: 0 };
+        }
+
         if ("reason" in item && item.reason === "missed_daily_target") {
             summaries[item.memberId][localDate].penalty += item.amount;
         } else {
@@ -110,16 +136,36 @@ export const getMemberDailySummaries = async ({
     return summaries;
 };
 
-export const getMonthlyTotals = async ({ groupId, month }: { groupId: string; month: Date }) => {
-    const startDate = new Date(month.getFullYear(), month.getMonth(), 1);
-    const endDate = new Date(month.getFullYear(), month.getMonth() + 1, 0);
-
-    const actionsWithPenalties = await getActionsWithVirtualPenalties({
+export const getMemberDailySummaries = async ({
+    groupId,
+    startDate,
+    endDate,
+}: {
+    groupId: string;
+    startDate: Date;
+    endDate: Date;
+}) => {
+    const actionsWithPenalties: (Action | VirtualPenalty)[] = await getActionsWithVirtualPenalties({
         groupId,
         startDate,
         endDate,
     });
 
+    const getSettingsForTimestamp = async (timestamp: Date) => {
+        return getEffectiveSettings(groupId, timestamp);
+    };
+
+    return _generateMemberDailySummaries({
+        actionsWithPenalties,
+        getSettingsForTimestamp,
+    });
+};
+
+export const _generateMonthlyTotals = ({
+    actionsWithPenalties,
+}: {
+    actionsWithPenalties: (Action | VirtualPenalty)[];
+}) => {
     const totals: { [key: string]: { pushups: number; penalties: number; net: number } } = {};
 
     for (const item of actionsWithPenalties) {
@@ -136,4 +182,17 @@ export const getMonthlyTotals = async ({ groupId, month }: { groupId: string; mo
     }
 
     return totals;
+};
+
+export const getMonthlyTotals = async ({ groupId, month }: { groupId: string; month: Date }) => {
+    const startDate = new Date(month.getFullYear(), month.getMonth(), 1);
+    const endDate = new Date(month.getFullYear(), month.getMonth() + 1, 0);
+
+    const actionsWithPenalties: (Action | VirtualPenalty)[] = await getActionsWithVirtualPenalties({
+        groupId,
+        startDate,
+        endDate,
+    });
+
+    return _generateMonthlyTotals({ actionsWithPenalties });
 };

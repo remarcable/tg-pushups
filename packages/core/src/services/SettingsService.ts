@@ -44,6 +44,7 @@ export const getEffectiveSettings = async (groupId: string, atTimestamp?: Date) 
     });
 
     let effectiveSettings = {
+        groupId: group.id,
         timezone: group.timezone,
         monthGoal: group.monthGoal,
         dailyTarget: group.dailyTarget,
