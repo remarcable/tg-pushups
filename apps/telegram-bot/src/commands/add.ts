@@ -68,7 +68,7 @@ export const generateReplyText = ({
     dailyTarget: number;
 }): string => {
     const remaining = dailyTarget - dailyTotal;
-    let reply = `Added your ${amount} pushups. Your total for today is ${dailyTotal}.`;
+    let reply = `Added ${amount} pushups. Your total for today is ${dailyTotal}.`;
     if (remaining > 0) {
         reply += ` You have ${remaining} to go to reach your daily target.`;
     } else {
