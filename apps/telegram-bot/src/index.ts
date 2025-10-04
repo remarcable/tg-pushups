@@ -8,10 +8,13 @@ import { registerAddCommand } from "./commands/add";
 import { registerSettingsCommand } from "./commands/settings";
 import { registerTotalsCommand } from "./commands/totals";
 import { registerHelpCommand } from "./commands/help";
+import { loggerMiddleware } from "./middleware/logger";
 
 config({ path: "../../.env" });
 
 const bot = new Bot(process.env.BOT_TOKEN || "");
+
+bot.use(loggerMiddleware);
 
 const myCommands = new CommandGroup<Context>();
 
@@ -63,5 +66,3 @@ if (import.meta.hot) {
         await stop();
     });
 }
-
-
