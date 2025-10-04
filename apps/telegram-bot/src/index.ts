@@ -56,9 +56,17 @@ const stop = async () => {
     }
 };
 
-// Graceful shutdown for termination signals
-process.once("SIGINT", () => stop().then(() => process.exit(0)));
-process.once("SIGTERM", () => stop().then(() => process.exit(0)));
+const gracefulShutdown = async () => {
+    await stop();
+    process.exit(0);
+};
+
+// Remove all previous listeners to prevent memory leaks in watch mode
+process.removeAllListeners("SIGINT");
+process.removeAllListeners("SIGTERM");
+
+process.on("SIGINT", () => gracefulShutdown());
+process.on("SIGTERM", () => gracefulShutdown());
 
 // Vite HMR
 if (import.meta.hot) {
