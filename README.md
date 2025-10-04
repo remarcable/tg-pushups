@@ -37,7 +37,7 @@ Telegram bot to track pushups as a group.
     Create a `.env` file in the root directory and add your Telegram Bot Token:
 
     ```env
-    DATABASE_URL="file:./prisma/dev.db"
+    DATABASE_URL="file:dev.db"
     TELEGRAM_BOT_TOKEN="YOUR_TELEGRAM_BOT_TOKEN"
     ```
 
